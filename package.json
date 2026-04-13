@@ -1,0 +1,24 @@
+{
+  "name": "magos-web-server",
+  "version": "1.0.0",
+  "description": "Koa API for Magos robot database",
+  "main": "src/app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "@koa/bodyparser": "^5.1.1",
+    "@koa/cors": "^5.0.0",
+    "@koa/router": "^12.0.1",
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "koa": "^2.15.3",
+    "koa-static": "^5.0.0",
+    "mysql2": "^3.11.0"
+  }
+}
