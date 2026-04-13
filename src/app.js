@@ -16,6 +16,16 @@ const publicDir = path.join(__dirname, "..", "public");
 
 const app = new Koa();
 
+// 统一补充 StatusCode，避免每个路由重复写。
+app.use(async (ctx, next) => {
+  await next();
+  if (ctx.body && typeof ctx.body === "object" && !Array.isArray(ctx.body)) {
+    if (ctx.body.StatusCode === undefined) {
+      ctx.body = { StatusCode: ctx.status || 200, ...ctx.body };
+    }
+  }
+});
+
 app.use(errorHandler());
 app.use(
   cors({

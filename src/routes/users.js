@@ -15,15 +15,6 @@ function stripPassword(row) {
   return rest;
 }
 
-function validateClientAuth(value) {
-  if (value === undefined || value === null) return { ok: true, value: 0 };
-  const n = Number(value);
-  if (![0, 1, 2].includes(n)) {
-    return { ok: false, message: "client_auth 必须为 0、1 或 2" };
-  }
-  return { ok: true, value: n };
-}
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
@@ -31,7 +22,7 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
  */
 export async function createUserHandler(ctx) {
   const body = ctx.request.body || {};
-  let { username, password, email, client_auth } = body;
+  let { username, password, email } = body;
 
   if (typeof username === "string") username = username.trim();
   if (typeof email === "string") email = email.trim();
@@ -66,19 +57,13 @@ export async function createUserHandler(ctx) {
     return;
   }
 
-  const authCheck = validateClientAuth(client_auth);
-  if (!authCheck.ok) {
-    ctx.status = 400;
-    ctx.body = { ok: false, message: authCheck.message };
-    return;
-  }
-
+  const client_auth = 0;
   const hash = await bcrypt.hash(password, 10);
   try {
     const result = await query(
       `INSERT INTO Users (username, password, email, client_auth)
        VALUES (?, ?, ?, ?)`,
-      [username, hash, email, authCheck.value]
+      [username, hash, email, client_auth]
     );
     const insertId = result.insertId;
     const rows = await query(
@@ -154,7 +139,7 @@ usersRouter.patch("/:userId", async (ctx) => {
     ctx.body = { ok: false, message: "无效的用户 ID" };
     return;
   }
-  const { email, client_auth, password } = ctx.request.body || {};
+  const { email, password } = ctx.request.body || {};
   const updates = [];
   const params = [];
   if (email !== undefined) {
@@ -171,16 +156,6 @@ usersRouter.patch("/:userId", async (ctx) => {
     }
     updates.push("email = ?");
     params.push(e);
-  }
-  if (client_auth !== undefined) {
-    const authCheck = validateClientAuth(client_auth);
-    if (!authCheck.ok) {
-      ctx.status = 400;
-      ctx.body = { ok: false, message: authCheck.message };
-      return;
-    }
-    updates.push("client_auth = ?");
-    params.push(authCheck.value);
   }
   if (password !== undefined && password !== "") {
     const p = String(password).trim();
