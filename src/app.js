@@ -17,8 +17,22 @@ const publicDir = path.join(__dirname, "..", "public");
 const app = new Koa();
 
 app.use(errorHandler());
-app.use(cors());
-app.use(bodyParser({ jsonLimit: "12mb" }));
+app.use(
+  cors({
+    origin(ctx) {
+      return ctx.get("Origin") || "*";
+    },
+    allowMethods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allowHeaders: ["Content-Type", "Accept", "Authorization"],
+  }),
+);
+app.use(
+  bodyParser({
+    jsonLimit: "20mb",
+    formLimit: "20mb",
+    textLimit: "20mb",
+  }),
+);
 
 app.use(usersRouter.routes()).use(usersRouter.allowedMethods());
 app.use(robotActionsRouter.routes()).use(robotActionsRouter.allowedMethods());
