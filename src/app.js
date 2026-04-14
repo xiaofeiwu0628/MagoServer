@@ -3,6 +3,7 @@ import bodyParser from "@koa/bodyparser";
 import cors from "@koa/cors";
 import serve from "koa-static";
 import path from "path";
+import { Readable } from "stream";
 import { fileURLToPath } from "url";
 import { port } from "./config.js";
 import { errorHandler } from "./middleware/errorHandler.js";
@@ -16,13 +17,18 @@ const publicDir = path.join(__dirname, "..", "public");
 
 const app = new Koa();
 
-// 统一补充 StatusCode，避免每个路由重复写。
+// 统一补充 StatusCode，避免每个路由重复写。（不包装二进制与流，否则会破坏静态文件与图片响应）
+function isJsonApiBody(body) {
+  if (body == null || typeof body !== "object" || Array.isArray(body)) return false;
+  if (Buffer.isBuffer(body)) return false;
+  if (Readable.isReadable?.(body) || typeof body.pipe === "function") return false;
+  return true;
+}
+
 app.use(async (ctx, next) => {
   await next();
-  if (ctx.body && typeof ctx.body === "object" && !Array.isArray(ctx.body)) {
-    if (ctx.body.StatusCode === undefined) {
-      ctx.body = { StatusCode: ctx.status || 200, ...ctx.body };
-    }
+  if (isJsonApiBody(ctx.body) && ctx.body.StatusCode === undefined) {
+    ctx.body = { StatusCode: ctx.status || 200, ...ctx.body };
   }
 });
 

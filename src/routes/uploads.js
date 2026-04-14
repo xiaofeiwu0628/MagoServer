@@ -9,6 +9,57 @@ const uploadsRoot = path.join(publicRoot, "uploads");
 
 export const uploadsRouter = new Router({ prefix: "/api/uploads" });
 
+const extMime = {
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".png": "image/png",
+  ".gif": "image/gif",
+  ".webp": "image/webp",
+};
+
+function mimeFromFilename(filename) {
+  const ext = path.extname(filename).toLowerCase();
+  return extMime[ext] || "application/octet-stream";
+}
+
+/** 仅允许保存接口生成的文件名形态，防止路径穿越 */
+function isSafeUploadsBasename(name) {
+  return typeof name === "string" && /^[0-9]+_[a-z0-9]+\.(jpe?g|png|gif|webp)$/i.test(name);
+}
+
+/** GET /api/uploads/actions/:filename — 与 POST 保存目录一致，显式设置 Content-Type */
+uploadsRouter.get("/actions/:filename", async (ctx) => {
+  const base = path.basename(ctx.params.filename || "");
+  if (!isSafeUploadsBasename(base)) {
+    ctx.status = 400;
+    ctx.body = { ok: false, message: "无效的文件名" };
+    return;
+  }
+  const abs = path.join(uploadsRoot, "actions", base);
+  const resolved = path.resolve(abs);
+  const allowedDir = path.resolve(uploadsRoot, "actions");
+  if (!resolved.startsWith(allowedDir + path.sep) && resolved !== allowedDir) {
+    ctx.status = 400;
+    ctx.body = { ok: false, message: "无效的路径" };
+    return;
+  }
+  try {
+    const buf = await fs.readFile(resolved);
+    ctx.type = mimeFromFilename(base);
+    ctx.set("Cache-Control", "public, max-age=86400");
+    ctx.body = buf;
+  } catch (e) {
+    if (e && e.code === "ENOENT") {
+      ctx.status = 404;
+      ctx.body = { ok: false, message: "图片不存在" };
+      return;
+    }
+    console.error("[uploads/actions GET]", e);
+    ctx.status = 500;
+    ctx.body = { ok: false, message: "读取图片失败" };
+  }
+});
+
 function extFromDataUrl(dataUrl) {
   const s = String(dataUrl);
   const mime = s.match(/^data:image\/([^;,]+)/i);
